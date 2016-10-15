@@ -52,8 +52,8 @@ function parseClipRect(cr) {
     const params = (cr || '').match(REGEXP_CLIP_RECT);
     if (params && (params.length === 5)) {
         return {
-            top: parseInt(params[1]),
-            left: parseInt(params[2]),
+            left: parseInt(params[1]),
+            top: parseInt(params[2]),
             width: parseInt(params[3]),
             height: parseInt(params[4])
         };
