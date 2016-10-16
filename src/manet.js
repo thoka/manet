@@ -71,6 +71,12 @@ function cleanupFsStorage(conf) {
 }
 
 function initFsWatchdog(conf) {
+    return; // we only update files at the moment
+    /*
+    TODO: in the future we should have two different opions
+    - max stay in cache (some days)
+    - max age before update
+    */
     const timeout = conf.cache * 1000,
           dir = conf.storage;
 

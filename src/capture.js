@@ -23,6 +23,7 @@ const _ = require('lodash'),
           allowInstall: true
       };
 
+const queue = require('bull')('manet capture',6379,'redis')
 
 /* Configurations and options */
 
@@ -83,7 +84,6 @@ function minimizeImage(src, dest, cb) {
     );
 }
 
-
 /* Screenshot capturing runner */
 
 function runCapturingProcess(options, config, outputFile, base64, onFinish) {
@@ -94,11 +94,6 @@ function runCapturingProcess(options, config, outputFile, base64, onFinish) {
               timeout: config.timeout
           };
 
-    logger.debug(
-        'Options for script: %s, base64: %s, command: %s',
-        JSON.stringify(options), base64, JSON.stringify(cmd)
-    );
-
     utils.execProcess(cmd, opts, (error) => {
         if (config.compress) {
             minimizeImage(outputFile, config.storage, () => onFinish(error));
@@ -108,6 +103,22 @@ function runCapturingProcess(options, config, outputFile, base64, onFinish) {
     });
 }
 
+const numWorkers = 8 // TODO: add config option numWorkers
+
+queue.process( numWorkers, (job,done) => {
+
+    logger.debug('Processing job: %s', job.data.opts.url)
+    logger.debug('...file:', job.data.file)
+    if (fs.exists(job.data.file)) {
+        logger.debug('...skipping, file exists')
+        done()
+    } else {
+        runCapturingProcess(job.data.opts, job.data.conf, job.data.file, job.data.base64, (error) => {
+              logger.debug('Process finished work: %s', job.data.opts.url)
+              done(error)
+        })
+    }
+})
 
 /* External API */
 
@@ -116,12 +127,24 @@ function screenshot(options, config, onFinish) {
           opts = createOptions(options, config),
           base64 = utils.encodeBase64(opts),
           file = outputFile(opts, conf),
+          timeout = conf.cache * 1000,
 
           retrieveImageFromStorage = () => {
               logger.debug('Take screenshot from file storage: %s', base64);
+
+              utils.processOldFile(file, timeout, (file) => {
+                 logger.debug('...file is to old, update it')
+                 queue.add( { opts: opts, conf:conf, file:file, base64:base64 })
+              } )
               onFinish(file);
           },
           retrieveImageFromSite = () => {
+
+              queue.add( { opts: opts, conf:conf, file:file, base64:base64 })
+
+              logger.debug('... sending noise')
+              return onFinish('/srv/manet/public/noise.png')
+
               runCapturingProcess(opts, conf, file, base64, (error) => {
                   logger.debug('Process finished work: %s', base64);
                   return onFinish(file, error);
@@ -129,6 +152,7 @@ function screenshot(options, config, onFinish) {
           };
 
     logger.info('Capture site screenshot: "%s"', options.url);
+    logger.info('... file: "%s"', file);
 
     if (options.force || !conf.cache) {
         retrieveImageFromSite();

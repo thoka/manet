@@ -115,5 +115,6 @@ module.exports = {
     encodeBase64: encodeBase64,
     filePath: filePath,
     runFsWatchdog: runFsWatchdog,
-    execProcess: execProcess
+    execProcess: execProcess,
+    processOldFile : processOldFile
 };

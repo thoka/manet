@@ -64,7 +64,8 @@
         "lodash": "^4.13.1",
         "winston": "^2.2.0",
         "squirrel": "^1.0.0",
-        "url-pattern": "^1.0.1"
+        "url-pattern": "^1.0.1",
+        "bull": "^1.0.0"
     },
 
     "pluginDependencies": {
